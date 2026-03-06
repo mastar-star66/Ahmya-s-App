@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AHMYA.EXE — Stellar K9 Companion</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#00f5ff"/>
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;overflow:hidden;background:#020209;color:#9ab6e4;font-family:'Rajdhani',sans-serif}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:rgba(0,245,255,.25);border-radius:2px}
+::-webkit-scrollbar-track{background:transparent}
+@keyframes glitch{0%,88%,100%{transform:none;filter:none}90%{transform:translate(-3px,1px);filter:hue-rotate(30deg)}92%{transform:translate(3px,-1px);filter:hue-rotate(-30deg)}94%{transform:translate(-1px,2px)}}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scanMove{from{transform:translateY(-100vh)}to{transform:translateY(200vh)}}
+@keyframes orbit{from{transform:rotate(0deg) translateX(44px) rotate(0deg)}to{transform:rotate(360deg) translateX(44px) rotate(-360deg)}}
+@keyframes orbit2{from{transform:rotate(0deg) translateX(28px) rotate(0deg)}to{transform:rotate(-360deg) translateX(28px) rotate(360deg)}}
+@keyframes appear{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes wave{0%,100%{height:3px}50%{height:16px}}
+@keyframes holo{0%,100%{opacity:.7}50%{opacity:1}}
+.page{animation:fadeUp .35s ease}
+.tabbar{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabbar::-webkit-scrollbar{display:none}
+input,select,textarea{font-family:'Share Tech Mono',monospace;background:rgba(0,0,0,.6);border:1px solid rgba(0,245,255,.2);border-radius:4px;color:#00f5ff;padding:7px 12px;font-size:12px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{border-color:#00f5ff;box-shadow:0 0 0 2px rgba(0,245,255,.1)}
+select option{background:#050518;color:#00f5ff}
+button{cursor:pointer;border:none;outline:none;transition:all .2s;background:transparent}
+.breed-stat{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid rgba(0,245,255,.07);gap:12px}
+.breed-stat:last-child{border-bottom:none}
+input[type=range]{-webkit-appearance:none;appearance:none;border:none;background:transparent;padding:0;height:16px;width:100%}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#ff0080;box-shadow:0 0 6px #ff0080;cursor:pointer;margin-top:-3px}
+input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#ff0080;box-shadow:0 0 6px #ff0080;cursor:pointer;border:none}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+// ─── THEME ────────────────────────────────────────────────────────────────────
+const C = {
+  bg:'#020209', cyan:'#00f5ff', pink:'#ff0080', green:'#39ff14',
+  orange:'#ff7200', purple:'#bf40ff', blue:'#44aaff', amber:'#ffba00',
+  text:'#9ab6e4', muted:'#384c66',
+};
+const rgb = h => {
+  const n = parseInt(h.replace('#',''), 16);
+  return `${(n>>16)&255},${(n>>8)&255},${n&255}`;
+};
+
+// ─── SVG ICONS ────────────────────────────────────────────────────────────────
+const Ico = ({size=16, color='currentColor', children, style={}}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={{display:'block',flexShrink:0,...style}}>{children}</svg>
+);
+const I = {
+  Dashboard: p => <Ico {...p}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></Ico>,
+  Utensils:  p => <Ico {...p}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3z"/></Ico>,
+  Activity:  p => <Ico {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></Ico>,
+  Zap:       p => <Ico {...p} fill={p.color||'currentColor'} stroke="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Ico>,
+  Moon:      p => <Ico {...p}><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></Ico>,
+  Waves:     p => <Ico {...p}><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></Ico>,
+  Heart:     p => <Ico {...p}><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></Ico>,
+  Book:      p => <Ico {...p}><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></Ico>,
+  Music:     p => <Ico {...p}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></Ico>,
+  Plus:      p => <Ico {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Ico>,
+  Play:      p => <Ico {...p} fill={p.color||'currentColor'} stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></Ico>,
+  Pause:     p => <Ico {...p} fill={p.color||'currentColor'} stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></Ico>,
+  SkipB:     p => <Ico {...p}><polygon fill={p.color||'currentColor'} stroke="none" points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></Ico>,
+  SkipF:     p => <Ico {...p}><polygon fill={p.color||'currentColor'} stroke="none" points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></Ico>,
+  Vol:       p => <Ico {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></Ico>,
+  VolX:      p => <Ico {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></Ico>,
+  Upload:    p => <Ico {...p}><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></Ico>,
+  Trash:     p => <Ico {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></Ico>,
+  X:         p => <Ico {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Ico>,
+};
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const NAV = [
+  {id:'dashboard', label:'BRIDGE',    Icon:I.Dashboard, color:C.cyan},
+  {id:'food',      label:'NUTRITION', Icon:I.Utensils,  color:C.orange},
+  {id:'exercise',  label:'EXERCISE',  Icon:I.Activity,  color:C.green},
+  {id:'play',      label:'PLAY',      Icon:I.Zap,       color:C.amber},
+  {id:'sleep',     label:'SLEEP',     Icon:I.Moon,      color:C.purple},
+  {id:'swim',      label:'AQUATICS',  Icon:I.Waves,     color:C.blue},
+  {id:'health',    label:'HEALTH',    Icon:I.Heart,     color:C.pink},
+  {id:'breed',     label:'DATABASE',  Icon:I.Book,      color:C.cyan},
+  {id:'music',     label:'AUDIO',     Icon:I.Music,     color:C.pink},
+];
+const CFG = {
+  food:{color:C.orange,unit:'cups',label:'Nutrition Log',chart:'bar',agg:'sum',
+    fields:[{k:'amount',label:'Amount (cups)',type:'number',ph:'1.5',step:'0.25'},
+            {k:'mealType',label:'Meal Type',type:'select',opts:['Morning','Afternoon','Evening','Treat','Supplement','Other']},
+            {k:'notes',label:'Notes',type:'text',ph:'Appetite level, bowl contents...'}]},
+  exercise:{color:C.green,unit:'min',label:'Exercise Log',chart:'area',agg:'sum',
+    fields:[{k:'duration',label:'Duration (min)',type:'number',ph:'45'},
+            {k:'exType',label:'Activity Type',type:'select',opts:['Walk','Run','Agility','Hike','Fetch Marathon','Training','Treadmill','Other']},
+            {k:'intensity',label:'Intensity',type:'select',opts:['Low','Medium','High','Maximum']},
+            {k:'notes',label:'Notes',type:'text',ph:'Route, distance, observations...'}]},
+  play:{color:C.amber,unit:'min',label:'Play Time Log',chart:'area',agg:'sum',
+    fields:[{k:'duration',label:'Duration (min)',type:'number',ph:'30'},
+            {k:'playType',label:'Play Type',type:'select',opts:['Fetch','Frisbee','Tug-of-War','Free Play','Puzzle Toys','Treibball','Herding','Social Play','Other']},
+            {k:'notes',label:'Notes',type:'text',ph:'Energy level, favorite toys...'}]},
+  sleep:{color:C.purple,unit:'hrs',label:'Sleep Log',chart:'bar',agg:'avg',
+    fields:[{k:'hours',label:'Hours Slept',type:'number',ph:'12',step:'0.5'},
+            {k:'quality',label:'Sleep Quality',type:'select',opts:['Restless','Light','Normal','Deep','Very Deep']},
+            {k:'notes',label:'Notes',type:'text',ph:'Location, disturbances...'}]},
+  swim:{color:C.blue,unit:'min',label:'Aquatics Log',chart:'area',agg:'sum',
+    fields:[{k:'duration',label:'Duration (min)',type:'number',ph:'20'},
+            {k:'location',label:'Location',type:'select',opts:['Pool','Lake','River','Beach','Backyard Pool','Creek','Other']},
+            {k:'notes',label:'Notes',type:'text',ph:'Water temp, eagerness, ear care done?'}]},
+  health:{color:C.pink,unit:'lbs',label:'Health Log',chart:'line',agg:'avg',
+    fields:[{k:'weight',label:'Weight (lbs)',type:'number',ph:'54',step:'0.1'},
+            {k:'mood',label:'Mood State',type:'select',opts:['😴 Lethargic','😟 Anxious','😐 Neutral','😊 Happy','🤩 Zoomies','🤒 Unwell']},
+            {k:'notes',label:'Notes',type:'text',ph:'Vet notes, symptoms, coat condition...'}]},
+};
+
+const mkDate = (daysAgo) => { const d=new Date(); d.setDate(d.getDate()-daysAgo); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+const genSamples = (n, lo, hi, key, extra={}) => Array.from({length:n},(_,i)=>({id:i, date:mkDate(n-1-i), [key]:+(lo+Math.random()*(hi-lo)).toFixed(1), notes:'', ...extra}));
+const INIT = {
+  food:     genSamples(14,1.5,3.0,'amount',{mealType:'Morning'}),
+  exercise: genSamples(14,40,130,'duration',{exType:'Walk',intensity:'Medium'}),
+  play:     genSamples(14,15,80,'duration',{playType:'Fetch'}),
+  sleep:    genSamples(14,10,14,'hours',{quality:'Normal'}),
+  swim:     genSamples(14,0,50,'duration',{location:'Lake'}),
+  health:   genSamples(14,52,57,'weight',{mood:'😊 Happy'}),
+};
+
+const BOOT = [
+  '▓▓▓ AHMYA.EXE :: STELLAR K9 COMPANION SYSTEM v2.47.0 ▓▓▓',
+  '> Initializing biometric sensor array.....................[OK]',
+  '> Establishing uplink to STATION CANIS-7..................[OK]',
+  '> Verifying quantum entanglement with subject: AHMYA......[OK]',
+  '> Loading Australian Kelpie behavioral matrices...........[OK]',
+  '> Loading German Shepherd cognitive protocols.............[OK]',
+  '> Nutrition tracking algorithms: calibrated...............[OK]',
+  '> Exercise protocol database: 847 routines loaded.........[OK]',
+  '> Sleep cycle neural analyzer............................[ONLINE]',
+  '> Aquatic performance monitoring module...................[ONLINE]',
+  '> Health biometrics suite: telemetry active...............[ONLINE]',
+  '> Music subsystem: audio core loaded......................[ONLINE]',
+  '> Breed intelligence database: 2.4 TB indexed.............[ONLINE]',
+  '! WARNING: Treat dispensary not detected..................[NON-CRITICAL]',
+  '> Scanning for canine biosignature...',
+  '> AHMYA detected. Tail wag probability: 98.7%.',
+  '▓▓▓ ALL SYSTEMS NOMINAL — COMPANION INTERFACE READY ▓▓▓',
+];
+
+// ─── BOOT SCREEN ──────────────────────────────────────────────────────────────
+const BootScreen = ({onComplete}) => {
+  const cvs = useRef(null);
+  const [prog, setProg] = useState(0);
+  const [secs, setSecs] = useState(30);
+  const [msgs, setMsgs] = useState([]);
+  const endRef = useRef(null);
+
+  useEffect(()=>{
+    const c=cvs.current; if(!c)return;
+    const ctx=c.getContext('2d');
+    const resize=()=>{c.width=window.innerWidth;c.height=window.innerHeight};
+    resize(); window.addEventListener('resize',resize);
+    const stars=Array.from({length:280},()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.4+.2,a:Math.random(),s:Math.random()*.3+.04,d:1}));
+    let raf;
+    const draw=()=>{
+      ctx.clearRect(0,0,c.width,c.height);
+      stars.forEach(s=>{s.a+=s.s*s.d*.012;if(s.a>1||s.a<0)s.d*=-1;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(190,215,255,${s.a})`;ctx.fill()});
+      raf=requestAnimationFrame(draw);
+    };
+    draw();
+    return()=>{cancelAnimationFrame(raf);window.removeEventListener('resize',resize)};
+  },[]);
+
+  useEffect(()=>{
+    const TOTAL=30000,start=Date.now();
+    const iv=setInterval(()=>{
+      const el=Date.now()-start;
+      setProg(Math.min(el/TOTAL*100,100));
+      setSecs(Math.max(0,Math.ceil((TOTAL-el)/1000)));
+      if(el>=TOTAL){clearInterval(iv);onComplete()}
+    },80);
+    return()=>clearInterval(iv);
+  },[onComplete]);
+
+  useEffect(()=>{ BOOT.forEach((m,i)=>setTimeout(()=>setMsgs(p=>[...p,m]),500+i*1700)) },[]);
+  useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'})},[msgs]);
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'#020209',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',zIndex:9999}}>
+      <canvas ref={cvs} style={{position:'absolute',inset:0}}/>
+      <div style={{position:'absolute',inset:0,background:'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px)',pointerEvents:'none'}}/>
+      <div style={{position:'absolute',left:0,right:0,height:'2px',background:'linear-gradient(90deg,transparent,rgba(0,245,255,.4),transparent)',animation:'scanMove 5s linear infinite',pointerEvents:'none'}}/>
+      <div style={{position:'relative',zIndex:2,width:'92%',maxWidth:580,textAlign:'center'}}>
+        <div style={{position:'relative',width:130,height:130,margin:'0 auto 20px',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{position:'absolute',inset:0,border:'1px solid rgba(0,245,255,.15)',borderRadius:'50%'}}/>
+          <div style={{position:'absolute',width:'calc(100% - 30px)',height:'calc(100% - 30px)',border:'1px solid rgba(255,0,128,.1)',borderRadius:'50%'}}/>
+          <div style={{position:'absolute',width:8,height:8,borderRadius:'50%',background:C.cyan,boxShadow:`0 0 12px ${C.cyan}`,animation:'orbit 7s linear infinite'}}/>
+          <div style={{position:'absolute',width:5,height:5,borderRadius:'50%',background:C.pink,boxShadow:`0 0 8px ${C.pink}`,animation:'orbit2 4.5s linear infinite'}}/>
+          <div style={{fontSize:50,filter:'drop-shadow(0 0 16px rgba(0,245,255,.6))',animation:'holo 3s ease-in-out infinite'}}>🐕</div>
+        </div>
+        <div style={{fontFamily:"'Orbitron',monospace",fontSize:'clamp(26px,5.5vw,50px)',fontWeight:900,color:C.cyan,textShadow:`0 0 20px ${C.cyan},0 0 50px rgba(0,245,255,.3)`,letterSpacing:'6px',animation:'glitch 9s infinite',marginBottom:4}}>
+          AHMYA<span style={{color:C.pink}}>.EXE</span>
+        </div>
+        <div style={{fontFamily:"'Orbitron',monospace",fontSize:'clamp(7px,1.6vw,11px)',color:'rgba(0,245,255,.45)',letterSpacing:'5px',marginBottom:24}}>STELLAR K9 COMPANION SYSTEM</div>
+        <div style={{height:170,overflowY:'auto',background:'rgba(0,245,255,.025)',border:'1px solid rgba(0,245,255,.1)',borderRadius:6,padding:'10px 14px',textAlign:'left',marginBottom:18}}>
+          {msgs.map((m,i)=>(
+            <div key={i} style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:i===msgs.length-1?C.cyan:'rgba(0,245,255,.4)',marginBottom:3,animation:'appear .4s ease',lineHeight:1.5}}>{m}</div>
+          ))}
+          <div ref={endRef}/>
+        </div>
+        <div style={{height:2,background:'rgba(0,245,255,.08)',borderRadius:2,overflow:'hidden',marginBottom:8}}>
+          <div style={{height:'100%',width:`${prog}%`,background:'linear-gradient(90deg,#00f5ff,#ff0080)',boxShadow:'0 0 8px #00f5ff',transition:'width .08s linear'}}/>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:18}}>
+          <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:'rgba(0,245,255,.4)'}}>{prog.toFixed(1)}% LOADED</span>
+          <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:secs<=5?C.pink:'rgba(0,245,255,.4)'}}>T-{secs}s</span>
+        </div>
+        <button onClick={onComplete}
+          style={{background:'transparent',border:'1px solid rgba(0,245,255,.2)',borderRadius:4,color:'rgba(0,245,255,.45)',fontFamily:"'Orbitron',monospace",fontSize:9,letterSpacing:2,padding:'8px 24px'}}
+          onMouseEnter={e=>{e.currentTarget.style.borderColor=C.cyan;e.currentTarget.style.color=C.cyan}}
+          onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(0,245,255,.2)';e.currentTarget.style.color='rgba(0,245,255,.45)'}}>
+          SKIP BOOT SEQUENCE
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── SVG CHARTS (zero dependencies) ──────────────────────────────────────────
+const SVGChart = ({data, type, color}) => {
+  const W=300, H=110, PL=32, PR=6, PT=6, PB=22;
+  const iW=W-PL-PR, iH=H-PT-PB;
+  if (!data||!data.length) return <div style={{height:H,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:C.muted}}>NO DATA</div>;
+  const vals=data.map(d=>d.value);
+  const mn=Math.min(...vals), mx=Math.max(...vals), rng=mx-mn||1;
+  const cx=i=>PL+(i/(data.length-1||1))*iW;
+  const cy=v=>PT+iH-((v-mn)/rng)*iH;
+  const pts=data.map((d,i)=>[cx(i),cy(d.value)]);
+  const linePath=pts.map((p,i)=>`${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const areaPath=`${linePath} L${pts[pts.length-1][0].toFixed(1)},${(PT+iH).toFixed(1)} L${pts[0][0].toFixed(1)},${(PT+iH).toFixed(1)} Z`;
+  const gid=`g${color.slice(1)}`;
+  const bW=Math.max(4,iW/data.length*0.6);
+  const showL=i=>data.length<=5||i===0||i===data.length-1||i%Math.ceil(data.length/4)===0;
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{overflow:'visible',display:'block'}}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
+        </linearGradient>
+      </defs>
+      {[0,.5,1].map((t,i)=>{
+        const gy=PT+iH*(1-t);
+        return <g key={i}>
+          <line x1={PL} y1={gy} x2={W-PR} y2={gy} stroke="rgba(255,255,255,.04)" strokeWidth="1"/>
+          <text x={PL-3} y={gy+3} textAnchor="end" fill={C.muted} fontSize="7" fontFamily="'Share Tech Mono',monospace">{(mn+rng*t).toFixed(1)}</text>
+        </g>;
+      })}
+      {type==='bar' && data.map((d,i)=>{
+        const bH=Math.max(2,((d.value-mn)/rng)*iH);
+        const bx=PL+(i/data.length)*iW+(iW/data.length-bW)/2;
+        return <rect key={i} x={bx.toFixed(1)} y={(PT+iH-bH).toFixed(1)} width={bW.toFixed(1)} height={bH.toFixed(1)} fill={color} opacity="0.8" rx="2" style={{filter:`drop-shadow(0 0 4px ${color})`}}/>;
+      })}
+      {(type==='area')&&<><path d={areaPath} fill={`url(#${gid})`}/><path d={linePath} fill="none" stroke={color} strokeWidth="2" style={{filter:`drop-shadow(0 0 4px ${color})`}}/>{pts.map(([x,y],i)=><circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r="2.5" fill={color} opacity="0.9"/>)}</>}
+      {type==='line'&&<><path d={linePath} fill="none" stroke={color} strokeWidth="2" style={{filter:`drop-shadow(0 0 4px ${color})`}}/>{pts.map(([x,y],i)=><circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r="2.5" fill={color} opacity="0.9"/>)}</>}
+      {data.map((d,i)=>showL(i)&&<text key={i} x={cx(i).toFixed(1)} y={H-2} textAnchor="middle" fill={C.muted} fontSize="7" fontFamily="'Share Tech Mono',monospace">{d.date}</text>)}
+    </svg>
+  );
+};
+
+const Spark = ({data, color}) => {
+  if (!data||data.length<2) return <div style={{height:36}}/>;
+  const W=100,H=36,vals=data.map(d=>d.value),mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+  const pts=vals.map((v,i)=>[(i/(vals.length-1))*W, H-((v-mn)/rng)*(H-4)-2]);
+  const ln=pts.map((p,i)=>`${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const ar=`${ln} L${W},${H} L0,${H} Z`;
+  const gid=`sp${color.slice(1)}`;
+  return (
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{display:'block'}}>
+      <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.4"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs>
+      <path d={ar} fill={`url(#${gid})`}/><path d={ln} fill="none" stroke={color} strokeWidth="1.5"/>
+    </svg>
+  );
+};
+
+// ─── SHARED UI COMPONENTS ─────────────────────────────────────────────────────
+const Card = ({children,color=C.cyan,style={}}) => (
+  <div style={{background:`rgba(${rgb(color)},.04)`,border:`1px solid rgba(${rgb(color)},.18)`,borderRadius:8,...style}}>{children}</div>
+);
+const Btn = ({children,color=C.cyan,onClick,style={}}) => (
+  <button onClick={onClick}
+    style={{background:`rgba(${rgb(color)},.1)`,border:`1px solid rgba(${rgb(color)},.35)`,borderRadius:4,color,fontFamily:"'Orbitron',monospace",fontSize:10,fontWeight:700,letterSpacing:1,padding:'8px 14px',display:'flex',alignItems:'center',gap:5,...style}}
+    onMouseEnter={e=>e.currentTarget.style.background=`rgba(${rgb(color)},.22)`}
+    onMouseLeave={e=>e.currentTarget.style.background=`rgba(${rgb(color)},.1)`}>
+    {children}
+  </button>
+);
+const SecTitle = ({children,color=C.cyan}) => (
+  <div style={{fontFamily:"'Orbitron',monospace",fontSize:9,fontWeight:700,letterSpacing:3,color,textShadow:`0 0 8px ${color}`,marginBottom:10,display:'flex',alignItems:'center',gap:8}}>
+    <div style={{width:16,height:1,background:color,opacity:.4}}/>{children}
+    <div style={{flex:1,height:1,background:`rgba(${rgb(color)},.15)`}}/>
+  </div>
+);
+
+// ─── DATA HELPER ──────────────────────────────────────────────────────────────
+const chartData = (entries, cfg) => {
+  const key=cfg.fields[0].k, grp={};
+  entries.forEach(e=>{if(!grp[e.date])grp[e.date]=[];grp[e.date].push(parseFloat(e[key]||0))});
+  return Object.entries(grp).slice(-7).map(([date,vals])=>({
+    date, value:cfg.agg==='avg'?+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1):+vals.reduce((a,b)=>a+b,0).toFixed(1)
+  }));
+};
+const todayStr = () => new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'});
+
+// ─── ENTRY FORM ───────────────────────────────────────────────────────────────
+const EntryForm = ({cfg, onAdd}) => {
+  const init = () => { const v={}; cfg.fields.forEach(f=>{v[f.k]=f.type==='select'?f.opts[0]:''}); return v; };
+  const [vals, setVals] = useState(init);
+  const submit = () => {
+    const pk=cfg.fields[0].k; if(!vals[pk]) return;
+    const d=new Date();
+    onAdd({id:Date.now(), date:d.toLocaleDateString('en-US',{month:'short',day:'numeric'}), ...vals});
+    setVals(init);
+  };
+  return (
+    <div style={{display:'grid',gap:8}}>
+      {cfg.fields.map(f=>(
+        <div key={f.k}>
+          <label style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'rgba(0,245,255,.45)',display:'block',marginBottom:3}}>{f.label.toUpperCase()}</label>
+          {f.type==='select'
+            ?<select value={vals[f.k]} onChange={e=>setVals(p=>({...p,[f.k]:e.target.value}))}>
+               {f.opts.map(o=><option key={o} value={o}>{o}</option>)}
+             </select>
+            :<input type={f.type} step={f.step} placeholder={f.ph} value={vals[f.k]} onChange={e=>setVals(p=>({...p,[f.k]:e.target.value}))}/>}
+        </div>
+      ))}
+      <Btn color={cfg.color} onClick={submit} style={{marginTop:4,justifyContent:'center',width:'100%'}}>
+        <I.Plus size={11} color={cfg.color}/> LOG ENTRY
+      </Btn>
+    </div>
+  );
+};
+
+// ─── ENTRY LIST ───────────────────────────────────────────────────────────────
+const EntryList = ({entries,cfg,onDelete}) => {
+  const pk=cfg.fields[0].k, sk=cfg.fields[1]?.k;
+  return (
+    <div style={{display:'grid',gap:5,maxHeight:220,overflowY:'auto'}}>
+      {[...entries].reverse().slice(0,25).map(e=>(
+        <div key={e.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 10px',background:'rgba(0,0,0,.3)',border:`1px solid rgba(${rgb(cfg.color)},.1)`,borderRadius:4}}>
+          <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:cfg.color,flexShrink:0}}>{e[pk]} {cfg.unit}</span>
+          <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:C.muted,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.date}{sk&&e[sk]?` · ${e[sk]}`:''}</span>
+          <button onClick={()=>onDelete(e.id)} style={{color:'rgba(255,0,128,.3)',padding:'2px 4px',flexShrink:0}}
+            onMouseEnter={e=>e.currentTarget.style.color=C.pink}
+            onMouseLeave={e=>e.currentTarget.style.color='rgba(255,0,128,.3)'}>
+            <I.Trash size={11} color="currentColor"/>
+          </button>
+        </div>
+      ))}
+      {!entries.length && <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:C.muted,textAlign:'center',padding:16}}>No entries yet.</div>}
+    </div>
+  );
+};
+
+// ─── TRACKER PAGE ─────────────────────────────────────────────────────────────
+const TrackerPage = ({cat, log, setLog}) => {
+  const cfg = CFG[cat];
+  const cd = useMemo(()=>chartData(log,cfg),[log,cfg]);
+  const td = todayStr();
+  const todayVal = useMemo(()=>{
+    const pk=cfg.fields[0].k, te=log.filter(e=>e.date===td);
+    if(!te.length) return '—';
+    const vals=te.map(e=>parseFloat(e[pk]||0));
+    const v=cfg.agg==='avg'?+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1):+vals.reduce((a,b)=>a+b,0).toFixed(1);
+    return `${v} ${cfg.unit}`;
+  },[log,cfg,td]);
+  return (
+    <div className="page" style={{display:'grid',gap:12}}>
+      <div style={{display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap'}}>
+        <div style={{fontFamily:"'Orbitron',monospace",fontSize:'clamp(22px,5vw,36px)',fontWeight:900,color:cfg.color,textShadow:`0 0 16px ${cfg.color}`}}>{todayVal}</div>
+        <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:'rgba(0,245,255,.4)'}}>TODAY'S {cfg.label.toUpperCase()}</div>
+      </div>
+      <Card color={cfg.color} style={{padding:'14px 10px 10px'}}>
+        <SecTitle color={cfg.color}>7-DAY TREND</SecTitle>
+        <SVGChart data={cd} type={cfg.chart} color={cfg.color}/>
+      </Card>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:12}}>
+        <Card color={cfg.color} style={{padding:14}}>
+          <SecTitle color={cfg.color}>LOG ENTRY</SecTitle>
+          <EntryForm cfg={cfg} onAdd={e=>setLog(p=>[...p,e])}/>
+        </Card>
+        <Card color={cfg.color} style={{padding:14}}>
+          <SecTitle color={cfg.color}>RECENT LOG</SecTitle>
+          <EntryList entries={log} cfg={cfg} onDelete={id=>setLog(p=>p.filter(e=>e.id!==id))}/>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+const Dashboard = ({logs}) => {
+  const td=todayStr();
+  const catMeta = {food:{Icon:I.Utensils},exercise:{Icon:I.Activity},play:{Icon:I.Zap},sleep:{Icon:I.Moon},swim:{Icon:I.Waves},health:{Icon:I.Heart}};
+  const getVal = cat => {
+    const cfg=CFG[cat],pk=cfg.fields[0].k,te=logs[cat].filter(e=>e.date===td);
+    if(!te.length)return '—';
+    const vals=te.map(e=>parseFloat(e[pk]||0));
+    const v=cfg.agg==='avg'?+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1):+vals.reduce((a,b)=>a+b,0).toFixed(1);
+    return `${v} ${cfg.unit}`;
+  };
+  return (
+    <div className="page" style={{display:'grid',gap:12}}>
+      <div style={{textAlign:'center',padding:'16px 12px',background:'linear-gradient(135deg,rgba(0,245,255,.04),rgba(255,0,128,.04))',border:'1px solid rgba(0,245,255,.12)',borderRadius:8}}>
+        <div style={{fontFamily:"'Orbitron',monospace",fontSize:'clamp(15px,4vw,26px)',fontWeight:900,color:C.cyan,textShadow:`0 0 14px ${C.cyan}`,marginBottom:4}}>
+          AHMYA <span style={{color:C.pink}}>//</span> STELLAR K9
+        </div>
+        <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:'rgba(0,245,255,.4)',letterSpacing:2}}>
+          {new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}).toUpperCase()}
+        </div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:10}}>
+          {[C.green,C.cyan,C.pink,C.amber].map((c,i)=>(
+            <div key={i} style={{width:5,height:5,borderRadius:'50%',background:c,boxShadow:`0 0 5px ${c}`,animation:`pulse ${1.5+i*.4}s infinite`}}/>
+          ))}
+          <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'rgba(0,245,255,.35)',marginLeft:4}}>ALL SYSTEMS ONLINE</span>
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:10}}>
+        {Object.keys(CFG).map(cat=>{
+          const cfg=CFG[cat], {Icon:CatI}=catMeta[cat], mini=chartData(logs[cat],cfg).slice(-5);
+          return (
+            <Card key={cat} color={cfg.color} style={{padding:10}}>
+              <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:6}}>
+                <CatI size={12} color={cfg.color} style={{filter:`drop-shadow(0 0 4px ${cfg.color})`}}/>
+                <span style={{fontFamily:"'Orbitron',monospace",fontSize:7,letterSpacing:1.5,color:cfg.color}}>{cat.toUpperCase()}</span>
+              </div>
+              <div style={{fontFamily:"'Orbitron',monospace",fontSize:'clamp(12px,2.2vw,16px)',fontWeight:700,color:cfg.color,textShadow:`0 0 8px ${cfg.color}`,marginBottom:6}}>{getVal(cat)}</div>
+              <Spark data={mini} color={cfg.color}/>
+            </Card>
+          );
+        })}
+      </div>
+
+      <Card color={C.cyan} style={{padding:14}}>
+        <SecTitle color={C.cyan}>DAILY MISSION OBJECTIVES</SecTitle>
+        {[
+          {e:'⚡',t:'Ahmya requires 2–3 hrs vigorous exercise today — Kelpie × GSD demands full-day-work levels of output.'},
+          {e:'🧠',t:'Mental stimulation: 15-min training session or puzzle toy — this level of intelligence demands daily challenge.'},
+          {e:'💧',t:'Check water bowl — hydration is critical for active working-dog breeds. Fresh, cool water always.'},
+          {e:'✂️',t:'Coat check: brush minimum 3× weekly. Check ears for redness or unusual odor after activity.'},
+          {e:'🦷',t:'Dental hygiene: brush teeth or provide dental chew. Annual professional cleaning recommended.'},
+        ].map((t,i,arr)=>(
+          <div key={i} style={{display:'flex',gap:10,padding:'7px 0',borderBottom:i<arr.length-1?'1px solid rgba(0,245,255,.06)':'none',alignItems:'flex-start'}}>
+            <span style={{fontSize:14,flexShrink:0}}>{t.e}</span>
+            <span style={{fontFamily:"'Rajdhani',sans-serif",fontSize:13,color:C.text,lineHeight:1.5,fontWeight:500}}>{t.t}</span>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+};
+
+// ─── BREED DATABASE ───────────────────────────────────────────────────────────
+const BREED_DATA = [
+  {title:'BREED OVERVIEW',color:C.cyan,e:'🧬',
+   body:'The Australian Kelpie × German Shepherd is one of the most intellectually gifted and athletically capable mixed breeds in existence. Both parents are world-renowned working dogs — the Kelpie for extraordinary sheep-herding in the Australian outback, and the GSD for legendary versatility in police, military, search & rescue, and service work. The result: a dog of extraordinary drive, intelligence, and physical capability.',
+   stats:[['Estimated Weight','40–70 lbs'],['Height','19–24" at shoulder'],['Lifespan','11–14 years'],['Intelligence Rank','Top 3–5% of all breeds'],['Energy Level','⚡⚡⚡⚡⚡ EXTREME'],['Commands Learned','200+ words/cues']]},
+  {title:'ENERGY & EXERCISE',color:C.green,e:'🏃',
+   body:'Both parent breeds were developed for full-day, high-intensity work. Daily minimum is 2–3 hours of vigorous activity — not casual strolls. Running (5–10 mile tolerance), agility, fetch marathons, herding, and swimming all suit this mix. An under-stimulated Kelpie Shepherd is one of the most destructive forces in a domestic setting.',
+   stats:[['Daily Exercise Min','2–3 hours vigorous'],['Running Tolerance','5–10 miles/day'],['Mental Stimulation','Daily — non-negotiable'],['Off-leash Safety','Requires solid recall'],['Best Types','Agility, Fetch, Running, Swim']]},
+  {title:'PLAY TYPES & INSTINCTS',color:C.amber,e:'🎯',
+   body:'Play is work for this breed. Fetch may become obsessive — use it as a training tool. Treibball directly taps the Kelpie herding instinct. Frisbee/disc sports leverage the athleticism and laser focus this mix possesses. Always blend physical and mental play sessions every day.',
+   stats:[['Top Physical Play','Fetch, Frisbee, Agility'],['Mental Play','Puzzle toys, nose work, training games'],['Herding Instinct','High — treibball strongly recommended'],['Tug-of-War','Excellent training motivator'],['Social Play','Good with familiar dogs'],['Water Play','Usually enthusiastic']]},
+  {title:'SLEEP PATTERNS',color:C.purple,e:'🌙',
+   body:'Highly active dogs sleep heavily between sessions. Adult Kelpie × GSDs sleep 12–14 hours per day total — completely normal. They recharge intensely between work periods. Puppies require 16–18 hours. Sleep disruption causes anxiety and behavioral regression. Always provide a cool, dark, dedicated rest space.',
+   stats:[['Adult Sleep Total','12–14 hrs/day'],['Puppy Sleep','16–18 hrs/day'],['Sleep Environment','Cool, dark, quiet den'],['Nap Pattern','Multiple naps + long overnight'],['Disruption Effect','Anxiety & behavioral regression']]},
+  {title:'SWIMMING & AQUATICS',color:C.blue,e:'🌊',
+   body:'German Shepherds are natural swimmers. Most Kelpie × GSD mixes take to water readily, especially when introduced young. Swimming is excellent for joint health — low-impact aerobics ideal for dysplasia-prone breeds. Always dry ears thoroughly after every swim session to prevent infection.',
+   stats:[['Swim Aptitude','Usually high (GSD dominant)'],['Joint Benefit','Excellent — low-impact aerobics'],['Ear Care Post-Swim','Dry thoroughly — infection risk'],['Intro Age','8–12 weeks (supervised)'],['Endurance','High tolerance in water']]},
+  {title:'MOOD & TEMPERAMENT',color:C.pink,e:'💜',
+   body:'Alert, intensely loyal, deeply bonded. Classic "velcro dogs" that mirror your energy. Naturally reserved with strangers but warm with proper socialization. High anxiety risk when under-stimulated. Kelpie sensitivity + GSD protectiveness creates dogs of remarkable emotional acuity. Positive reinforcement only — harsh correction permanently damages the bond.',
+   stats:[['Loyalty','Extreme — strong single-person bond'],['Stranger Response','Reserved → warm with socialization'],['Anxiety Risk','High if under-exercised/stimulated'],['Sensitivity','Very high — positive methods only'],['Herding Behavior','May nip heels of children/pets'],['Velcro Tendency','Strong — wants constant proximity']]},
+  {title:'HEALTH CONCERNS',color:C.orange,e:'🏥',
+   body:'Hip and elbow dysplasia are the primary risk — both breeds have elevated rates. Progressive Retinal Atrophy (Kelpie) and Degenerative Myelopathy (GSD) require screening. Bloat/GDV is life-threatening — learn the symptoms immediately. Test for MDR1 gene mutation, common in herding breeds and affecting drug tolerances.',
+   stats:[['Hip/Elbow Dysplasia','HIGH RISK — screen annually'],['Progressive Retinal Atrophy','Screen with CAER exam'],['Degenerative Myelopathy','DNA test available'],['Bloat/GDV','EMERGENCY — learn symptoms NOW'],['MDR1 Gene Mutation','Test — affects drug tolerance'],['Vet Visits','Every 6 months minimum']]},
+  {title:'COAT & GROOMING',color:C.cyan,e:'✂️',
+   body:'Medium-length double coat. Shedding is HEAVY year-round and catastrophic during seasonal coat blows. A quality deshedding brush is essential. NEVER shave a double-coated dog — the coat regulates temperature in both heat and cold. Regular grooming prevents matting and skin issues.',
+   stats:[['Brushing Frequency','3× week min; daily in shed season'],['Bathing','Every 4–6 weeks'],['Ear Cleaning','Weekly — check for redness/odor'],['Nail Trimming','Every 3–4 weeks'],['Dental Care','Daily brushing recommended'],['DO NOT SHAVE','Double coat = temperature regulator']]},
+  {title:'NUTRITION',color:C.amber,e:'🥩',
+   body:'High-quality animal protein as first ingredient is non-negotiable. Working-dog formula kibble provides needed caloric density. Watch weight carefully — obesity dramatically accelerates joint disease. Joint supplements recommended from age 2. Feed twice daily — single large meals increase dangerous bloat risk.',
+   stats:[['Daily Food Amount','2.5–4 cups premium kibble'],['Feeding Schedule','2× daily — never 1 large meal'],['Joint Supplements','Glucosamine + Chondroitin + Omega-3'],['Avoid','Grain-free (DCM risk), overfeeding'],['Ideal Body Weight','45–65 lbs (activity-dependent)'],['Water','Always fresh, always available']]},
+];
+
+const BreedPage = () => (
+  <div className="page" style={{display:'grid',gap:12}}>
+    <div style={{textAlign:'center',padding:'14px 12px',background:'linear-gradient(135deg,rgba(0,245,255,.04),rgba(255,0,128,.04))',border:'1px solid rgba(0,245,255,.12)',borderRadius:8}}>
+      <div style={{fontFamily:"'Orbitron',monospace",fontSize:'clamp(11px,3vw,17px)',fontWeight:900,color:C.cyan,letterSpacing:4,marginBottom:3}}>CANINE DATABASE</div>
+      <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'rgba(0,245,255,.4)',letterSpacing:2}}>AUSTRALIAN KELPIE × GERMAN SHEPHERD // SUBJECT: AHMYA</div>
+    </div>
+    {BREED_DATA.map((s,i)=>(
+      <Card key={i} color={s.color} style={{padding:14}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+          <span style={{fontSize:16}}>{s.e}</span>
+          <span style={{fontFamily:"'Orbitron',monospace",fontSize:9,fontWeight:700,letterSpacing:3,color:s.color,textShadow:`0 0 8px ${s.color}`}}>{s.title}</span>
+        </div>
+        <p style={{fontFamily:"'Rajdhani',sans-serif",fontSize:13,color:C.text,lineHeight:1.65,marginBottom:12}}>{s.body}</p>
+        <div>{s.stats.map(([l,v],j)=>(
+          <div key={j} className="breed-stat">
+            <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:'rgba(0,245,255,.45)',flexShrink:0}}>{l}</span>
+            <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:s.color,fontWeight:700,textAlign:'right'}}>{v}</span>
+          </div>
+        ))}</div>
+      </Card>
+    ))}
+  </div>
+);
+
+// ─── MUSIC PLAYER ─────────────────────────────────────────────────────────────
+const MusicPage = () => {
+  const [playlist, setPlaylist] = useState([]);
+  const [idx, setIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [vol, setVol] = useState(0.8);
+  const [cur, setCur] = useState(0);
+  const [dur, setDur] = useState(0);
+  const aRef = useRef(null);
+  const fRef = useRef(null);
+  const plRef = useRef([]);
+  useEffect(()=>{plRef.current=playlist},[playlist]);
+
+  useEffect(()=>{
+    const a=new Audio(); aRef.current=a; a.volume=vol;
+    const t1=()=>setCur(a.currentTime), t2=()=>setDur(a.duration);
+    const t3=()=>setIdx(p=>(p+1)%Math.max(plRef.current.length,1));
+    a.addEventListener('timeupdate',t1); a.addEventListener('loadedmetadata',t2); a.addEventListener('ended',t3);
+    return()=>{a.pause();a.src='';a.removeEventListener('timeupdate',t1);a.removeEventListener('loadedmetadata',t2);a.removeEventListener('ended',t3)};
+  },[]);
+
+  useEffect(()=>{
+    if(!aRef.current||!playlist.length)return;
+    const t=playlist[idx]; if(!t)return;
+    aRef.current.src=t.url; setCur(0); setDur(0);
+    if(playing) aRef.current.play().catch(()=>{});
+  },[idx,playlist]);
+
+  useEffect(()=>{
+    if(!aRef.current)return;
+    if(playing&&playlist.length) aRef.current.play().catch(()=>{});
+    else aRef.current.pause();
+  },[playing]);
+
+  useEffect(()=>{if(aRef.current)aRef.current.volume=vol},[vol]);
+
+  const loadFiles = files => {
+    const tracks=Array.from(files).filter(f=>f.type.startsWith('audio/')).map(f=>({
+      id:Date.now()+Math.random(), name:f.name.replace(/\.[^/.]+$/,'').replace(/[_\-]/g,' '), url:URL.createObjectURL(f)
+    }));
+    if(!tracks.length)return;
+    setPlaylist(p=>{if(p.length===0)setIdx(0);return[...p,...tracks]});
+    setPlaying(true);
+  };
+
+  const fmt=s=>(!s||isNaN(s))?'0:00':`${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+  const seek=e=>{if(!aRef.current||!dur)return;const r=e.currentTarget.getBoundingClientRect();aRef.current.currentTime=((e.clientX-r.left)/r.width)*dur};
+  const track=playlist[idx], pct=dur?(cur/dur)*100:0;
+
+  return (
+    <div className="page" style={{display:'grid',gap:12}}>
+      <Card color={C.pink} style={{padding:16}}>
+        <SecTitle color={C.pink}>AUDIO UPLOAD</SecTitle>
+        <div onClick={()=>fRef.current?.click()}
+          onDragOver={e=>e.preventDefault()}
+          onDrop={e=>{e.preventDefault();loadFiles(e.dataTransfer.files)}}
+          style={{border:`2px dashed rgba(${rgb(C.pink)},.25)`,borderRadius:8,padding:'22px 16px',textAlign:'center',cursor:'pointer',transition:'all .2s'}}
+          onMouseEnter={e=>{e.currentTarget.style.borderColor=C.pink;e.currentTarget.style.background=`rgba(${rgb(C.pink)},.04)`}}
+          onMouseLeave={e=>{e.currentTarget.style.borderColor=`rgba(${rgb(C.pink)},.25)`;e.currentTarget.style.background='transparent'}}>
+          <I.Upload size={22} color={C.pink} style={{margin:'0 auto 8px',filter:`drop-shadow(0 0 6px ${C.pink})`}}/>
+          <div style={{fontFamily:"'Orbitron',monospace",fontSize:10,color:C.pink,letterSpacing:2,marginBottom:3}}>UPLOAD MP3 / AUDIO FILES</div>
+          <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'rgba(255,0,128,.35)'}}>Drag & drop or click to browse</div>
+        </div>
+        <input ref={fRef} type="file" accept="audio/*" multiple onChange={e=>loadFiles(e.target.files)} style={{display:'none'}}/>
+      </Card>
+
+      {track && (
+        <Card color={C.pink} style={{padding:16}}>
+          <SecTitle color={C.pink}>NOW PLAYING</SecTitle>
+          <div style={{textAlign:'center',marginBottom:12}}>
+            <div style={{fontFamily:"'Orbitron',monospace",fontSize:'clamp(10px,2.2vw,14px)',fontWeight:700,color:C.pink,textShadow:`0 0 10px ${C.pink}`,wordBreak:'break-word',marginBottom:8}}>{track.name}</div>
+            {playing&&<div style={{display:'flex',justifyContent:'center',gap:3,alignItems:'flex-end',height:20,marginBottom:6}}>
+              {[0,.12,.24,.18,.06].map((d,i)=><div key={i} style={{width:3,height:4,background:C.pink,borderRadius:2,boxShadow:`0 0 6px ${C.pink}`,animation:`wave .7s ${d}s ease-in-out infinite alternate`}}/>)}
+            </div>}
+          </div>
+          <div onClick={seek} style={{height:4,background:`rgba(${rgb(C.pink)},.12)`,borderRadius:2,cursor:'pointer',marginBottom:5,position:'relative'}}>
+            <div style={{height:'100%',width:`${pct}%`,background:C.pink,boxShadow:`0 0 6px ${C.pink}`,borderRadius:2,transition:'width .08s linear'}}/>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}>
+            <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'rgba(255,0,128,.45)'}}>{fmt(cur)}</span>
+            <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'rgba(255,0,128,.45)'}}>{fmt(dur)}</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:20,marginBottom:12}}>
+            <button onClick={()=>setIdx(p=>(p-1+playlist.length)%Math.max(playlist.length,1))} style={{color:'rgba(255,0,128,.5)',padding:4}} onMouseEnter={e=>e.currentTarget.style.color=C.pink} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,0,128,.5)'}>
+              <I.SkipB size={20} color="currentColor"/>
+            </button>
+            <button onClick={()=>setPlaying(p=>!p)} style={{background:`rgba(${rgb(C.pink)},.12)`,border:`1px solid rgba(${rgb(C.pink)},.4)`,borderRadius:'50%',width:46,height:46,display:'flex',alignItems:'center',justifyContent:'center',filter:`drop-shadow(0 0 8px ${C.pink})`}}>
+              {playing?<I.Pause size={18} color={C.pink}/>:<I.Play size={18} color={C.pink}/>}
+            </button>
+            <button onClick={()=>setIdx(p=>(p+1)%Math.max(playlist.length,1))} style={{color:'rgba(255,0,128,.5)',padding:4}} onMouseEnter={e=>e.currentTarget.style.color=C.pink} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,0,128,.5)'}>
+              <I.SkipF size={20} color="currentColor"/>
+            </button>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <button onClick={()=>setVol(v=>v>0?0:0.8)} style={{color:C.pink,padding:0,flexShrink:0}}>
+              {vol===0?<I.VolX size={14} color={C.pink}/>:<I.Vol size={14} color={C.pink}/>}
+            </button>
+            <div style={{flex:1,position:'relative',height:16,display:'flex',alignItems:'center'}}>
+              <div style={{position:'absolute',left:0,right:0,height:3,background:`rgba(${rgb(C.pink)},.12)`,borderRadius:2,pointerEvents:'none'}}>
+                <div style={{width:`${vol*100}%`,height:'100%',background:C.pink,borderRadius:2}}/>
+              </div>
+              <input type="range" min="0" max="1" step="0.02" value={vol} onChange={e=>setVol(parseFloat(e.target.value))}
+                style={{position:'absolute',inset:0,opacity:0,cursor:'pointer'}}/>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {playlist.length > 0 && (
+        <Card color={C.pink} style={{padding:14}}>
+          <SecTitle color={C.pink}>PLAYLIST — {playlist.length} TRACKS</SecTitle>
+          <div style={{display:'grid',gap:4,maxHeight:220,overflowY:'auto'}}>
+            {playlist.map((t,i)=>(
+              <div key={t.id} onClick={()=>{setIdx(i);setPlaying(true)}}
+                style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:4,cursor:'pointer',background:i===idx?`rgba(${rgb(C.pink)},.12)`:'rgba(0,0,0,.25)',border:`1px solid rgba(${rgb(C.pink)},${i===idx?.35:.1})`,transition:'all .2s'}}>
+                {i===idx&&playing
+                  ?<div style={{width:7,height:7,borderRadius:'50%',background:C.pink,animation:'pulse 1s infinite',flexShrink:0}}/>
+                  :<span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'rgba(255,0,128,.3)',width:18,textAlign:'right',flexShrink:0}}>{i+1}</span>}
+                <span style={{fontFamily:"'Rajdhani',sans-serif",fontSize:13,color:i===idx?C.pink:C.text,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</span>
+                <button onClick={e=>{e.stopPropagation();setPlaylist(p=>p.filter(x=>x.id!==t.id))}}
+                  style={{color:'rgba(255,0,128,.3)',padding:'2px 4px',flexShrink:0}}
+                  onMouseEnter={e=>e.currentTarget.style.color=C.pink}
+                  onMouseLeave={e=>e.currentTarget.style.color='rgba(255,0,128,.3)'}>
+                  <I.X size={11} color="currentColor"/>
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+      {!playlist.length&&<div style={{textAlign:'center',padding:'40px 16px',fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:'rgba(255,0,128,.3)'}}>No tracks loaded.<br/>Upload MP3 files above to begin.</div>}
+    </div>
+  );
+};
+
+// ─── NAV ITEM ─────────────────────────────────────────────────────────────────
+const NavItem = ({item, active, onClick, horiz}) => {
+  const {Icon:Ic, color, label} = item;
+  return (
+    <button onClick={onClick} style={{display:'flex',flexDirection:horiz?'column':'row',alignItems:'center',gap:horiz?2:10,padding:horiz?'7px 12px':'9px 14px',background:active?`rgba(${rgb(color)},.1)`:'transparent',borderLeft:!horiz&&active?`2px solid ${color}`:!horiz?'2px solid transparent':'none',borderBottom:horiz&&active?`2px solid ${color}`:horiz?'2px solid transparent':'none',width:horiz?'auto':'100%',whiteSpace:'nowrap',transition:'all .2s'}}
+      onMouseEnter={e=>e.currentTarget.style.background=`rgba(${rgb(color)},.07)`}
+      onMouseLeave={e=>e.currentTarget.style.background=active?`rgba(${rgb(color)},.1)`:'transparent'}>
+      <Ic size={horiz?15:13} color={active?color:'rgba(100,130,160,.45)'} style={active?{filter:`drop-shadow(0 0 4px ${color})`}:{}}/>
+      <span style={{fontFamily:"'Orbitron',monospace",fontSize:horiz?7:8,letterSpacing:horiz?0:1.5,fontWeight:700,color:active?color:'rgba(100,130,160,.45)',textShadow:active?`0 0 6px ${color}`:'none'}}>{label}</span>
+    </button>
+  );
+};
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+const MainApp = () => {
+  const [page, setPage] = useState('dashboard');
+  const [mobile, setMobile] = useState(window.innerWidth<768);
+  const [logs, setLogs] = useState(INIT);
+  useEffect(()=>{const h=()=>setMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h)},[]);
+  const setLog = useCallback(cat=>upd=>setLogs(p=>({...p,[cat]:typeof upd==='function'?upd(p[cat]):upd})),[]);
+  const active = NAV.find(n=>n.id===page)||NAV[0];
+
+  const renderPage = () => {
+    if(page==='dashboard') return <Dashboard logs={logs}/>;
+    if(page==='breed')     return <BreedPage/>;
+    if(page==='music')     return <MusicPage/>;
+    if(CFG[page])          return <TrackerPage cat={page} log={logs[page]} setLog={setLog(page)}/>;
+    return null;
+  };
+
+  return (
+    <div style={{height:'100%',display:'flex',flexDirection:mobile?'column':'row',background:C.bg,overflow:'hidden',position:'relative'}}>
+      <div style={{position:'fixed',inset:0,pointerEvents:'none',zIndex:0,background:`radial-gradient(ellipse at 15% 85%,rgba(0,245,255,.05) 0%,transparent 50%),radial-gradient(ellipse at 85% 15%,rgba(255,0,128,.05) 0%,transparent 50%)`}}/>
+      <div style={{position:'fixed',inset:0,pointerEvents:'none',zIndex:1,background:'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.06) 3px,rgba(0,0,0,.06) 4px)'}}/>
+
+      {!mobile&&(
+        <div style={{width:160,flexShrink:0,position:'relative',zIndex:10,background:'rgba(2,5,20,.96)',borderRight:'1px solid rgba(0,245,255,.09)',display:'flex',flexDirection:'column'}}>
+          <div style={{padding:'14px 14px 12px',borderBottom:'1px solid rgba(0,245,255,.09)'}}>
+            <div style={{fontFamily:"'Orbitron',monospace",fontSize:14,fontWeight:900,color:C.cyan,textShadow:`0 0 12px ${C.cyan}`,letterSpacing:2}}>AHMYA</div>
+            <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:7,color:'rgba(0,245,255,.35)',letterSpacing:2,marginTop:2}}>STELLAR K9 SYSTEM</div>
+          </div>
+          <div style={{flex:1,overflowY:'auto',paddingTop:6}}>{NAV.map(n=><NavItem key={n.id} item={n} active={page===n.id} onClick={()=>setPage(n.id)}/>)}</div>
+          <div style={{padding:'10px 14px',borderTop:'1px solid rgba(0,245,255,.09)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <div style={{width:5,height:5,borderRadius:'50%',background:C.green,boxShadow:`0 0 5px ${C.green}`,animation:'pulse 2.2s infinite'}}/>
+              <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:8,color:'rgba(0,245,255,.35)'}}>ONLINE</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',position:'relative',zIndex:2}}>
+        <div style={{height:mobile?46:50,flexShrink:0,background:'rgba(2,5,20,.96)',borderBottom:'1px solid rgba(0,245,255,.09)',display:'flex',alignItems:'center',padding:'0 14px',gap:10}}>
+          {mobile&&<div style={{fontFamily:"'Orbitron',monospace",fontSize:13,fontWeight:900,color:C.cyan,textShadow:`0 0 8px ${C.cyan}`,letterSpacing:2}}>AHMYA<span style={{color:C.pink}}>.EXE</span></div>}
+          <div style={{flex:1}}>{!mobile&&<span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:10,color:'rgba(0,245,255,.35)',letterSpacing:2}}>// {active.label}</span>}</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            {[C.green,C.cyan,C.pink].map((c,i)=><div key={i} style={{width:5,height:5,borderRadius:'50%',background:c,boxShadow:`0 0 4px ${c}`,animation:`pulse ${1.6+i*.5}s infinite`}}/>)}
+            <span style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'rgba(0,245,255,.35)',marginLeft:2}}>
+              {new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false})}
+            </span>
+          </div>
+        </div>
+        {mobile&&(
+          <div className="tabbar" style={{display:'flex',background:'rgba(2,5,20,.94)',borderBottom:'1px solid rgba(0,245,255,.08)',flexShrink:0}}>
+            {NAV.map(n=><NavItem key={n.id} item={n} active={page===n.id} onClick={()=>setPage(n.id)} horiz/>)}
+          </div>
+        )}
+        <div style={{flex:1,overflowY:'auto',overflowX:'hidden',padding:12}}>{renderPage()}</div>
+      </div>
+    </div>
+  );
+};
+
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
+const App = () => {
+  const [booted, setBooted] = useState(false);
+  return booted ? <MainApp/> : <BootScreen onComplete={()=>setBooted(true)}/>;
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
