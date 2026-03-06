@@ -1,0 +1,42 @@
+{
+  "name": "AHMYA.EXE Stellar K9 Companion",
+  "short_name": "AHMYA.EXE",
+  "id": "ahmya-k9",
+  "description": "Cyberpunk dog health tracker for Ahmya — nutrition, exercise, play, sleep, aquatics, and health monitoring for Australian Kelpie German Shepherd mix.",
+  "start_url": "/Ahmya-s-App/index.html",
+  "scope": "/Ahmya-s-App/",
+  "display": "standalone",
+  "orientation": "any",
+  "dir": "ltr",
+  "lang": "en-US",
+  "background_color": "#020209",
+  "theme_color": "#00f5ff",
+  "categories": ["health", "fitness", "lifestyle"],
+  "icons": [
+    {
+      "src": "/Ahmya-s-App/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Ahmya-s-App/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Nutrition Log",
+      "url": "/Ahmya-s-App/index.html",
+      "description": "Log Ahmya's food intake"
+    },
+    {
+      "name": "Exercise Log",
+      "url": "/Ahmya-s-App/index.html",
+      "description": "Log Ahmya's exercise"
+    }
+  ]
+}
