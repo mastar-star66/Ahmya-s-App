@@ -1,0 +1,17 @@
+{
+  "background_color": "#020209",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "AHMYA.EXE Stellar K9 Companion",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "AHMYA.EXE",
+  "start_url": "/",
+  "theme_color": "#00f5ff",
+  "id": "ahmya-k9",
+  "description": "Cyberpunk dog health tracker for Ahmya.",
+  "lang": "en",
+  "categories": [
+    "health"
+  ]
+}
